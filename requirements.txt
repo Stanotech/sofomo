@@ -1,6 +1,9 @@
 Django
 djangorestframework
+pytest
+pytest-django
 psycopg2-binary
 requests
+requests_mock
 python-dotenv
 dj-database-url
