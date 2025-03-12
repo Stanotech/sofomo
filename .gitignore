@@ -17,6 +17,7 @@ db.sqlite3
 *.pid
 
 # Django migrations (if you want to ignore them)
+app/geolocation/migrations/
 */migrations/*.py
 !*/migrations/__init__.py
 
