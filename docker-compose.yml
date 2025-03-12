@@ -5,9 +5,9 @@ services:
     image: postgres:15
     restart: always
     environment:
-      POSTGRES_DB: geolocation_db
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
 
@@ -19,8 +19,8 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgres://user:password@db:5432/geolocation_db
-      - IPSTACK_API_KEY=your_ipstack_api_key
+      - DATABASE_URL=${DATABASE_URL}
+      - IPSTACK_API_KEY=${IPSTACK_API_KEY}
       - PYTHONUNBUFFERED=1
     volumes:
       - ./app:/app
