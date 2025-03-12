@@ -1,5 +1,6 @@
 from django.db import models
 
+
 class Geolocation(models.Model):
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     url = models.URLField(null=True, blank=True)
