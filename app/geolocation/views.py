@@ -7,10 +7,6 @@ from rest_framework.views import APIView
 from .models import Geolocation
 from .serializers import GeolocationSerializer
 
-IPSTACK_API_KEY = (
-    "Your IPStack API key"  # Dodaj do settings i wczytuj z settings.IPSTACK_API_KEY
-)
-
 
 class GeolocationView(APIView):
 
@@ -51,7 +47,9 @@ class GeolocationView(APIView):
                 {"error": "Please give IP or URL."}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        ipstack_url = f"http://api.ipstack.com/{ip or url}?access_key={IPSTACK_API_KEY}"
+        ipstack_url = (
+            f"http://api.ipstack.com/{ip or url}?access_key={settings.IPSTACK_API_KEY}"
+        )
         response = requests.get(ipstack_url)
         print(response)
 
@@ -61,7 +59,7 @@ class GeolocationView(APIView):
             )
 
         data = response.json()
-        if not data.get("success", True):  # Domyślnie True dla starszych wersji API
+        if not data.get("success", True):
             return Response(
                 {
                     "error": "IPStack API error",
