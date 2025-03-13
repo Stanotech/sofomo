@@ -16,25 +16,29 @@ class GeolocationView(APIView):
 
         if not ip and not url:
             return Response(
-                {"error": "Please give IP or URL."}, status=status.HTTP_400_BAD_REQUEST
+                {"error": "Please provide an IP or URL."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
-            geolocation = (
-                Geolocation.objects.get(ip_address=ip)
+            geolocations = (
+                Geolocation.objects.filter(ip_address=ip)
                 if ip
-                else Geolocation.objects.get(url=url)
+                else Geolocation.objects.filter(url=url)
             )
-            serializer = GeolocationSerializer(geolocation)
+
+            if not geolocations.exists():
+                return Response(
+                    {"error": "No data found for this IP or URL."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            serializer = GeolocationSerializer(geolocations, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
-        except Geolocation.DoesNotExist:
-            return Response(
-                {"error": "There is no data about this IP or URL."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+
         except OperationalError:
             return Response(
-                {"error": "Database is not available"},
+                {"error": "Database is not available."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
@@ -44,14 +48,14 @@ class GeolocationView(APIView):
 
         if not ip and not url:
             return Response(
-                {"error": "Please give IP or URL."}, status=status.HTTP_400_BAD_REQUEST
+                {"error": "Please provide IP or URL."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         ipstack_url = (
             f"http://api.ipstack.com/{ip or url}?access_key={settings.IPSTACK_API_KEY}"
         )
         response = requests.get(ipstack_url)
-        print(response)
 
         if response.status_code != 200:
             return Response(
@@ -87,7 +91,8 @@ class GeolocationView(APIView):
 
         if not ip and not url:
             return Response(
-                {"error": "Please give IP or URL."}, status=status.HTTP_400_BAD_REQUEST
+                {"error": "Please provide IP or URL."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
