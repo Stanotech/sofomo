@@ -107,9 +107,9 @@ Example Response:
 
 json:
 
-{
-    "message": "Data deleted."
-}
+    {
+        "message": "Data deleted."
+    }
 
 Testing
 
