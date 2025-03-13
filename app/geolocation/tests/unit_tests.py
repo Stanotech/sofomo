@@ -62,3 +62,16 @@ def test_get_geolocation_by_url(api_client, request_factory):
     assert response.status_code == status.HTTP_200_OK
     assert response.data[0]["url"] == "example.com"
     assert response.data[0]["city"] == "Los Angeles"
+
+
+@pytest.mark.django_db
+def test_get_geolocation_not_found(api_client, request_factory):
+
+    # creating request with non-existent IP
+    request = request_factory.get("/geolocation/", {"ip": "10.0.0.1"})
+    view = GeolocationView.as_view()
+
+    response = view(request)
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.data["error"] == "No data found for this IP or URL."
