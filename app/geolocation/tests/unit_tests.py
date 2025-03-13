@@ -101,3 +101,27 @@ def test_post_geolocation(api_client, request_factory):
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["ip_address"] == "192.168.1.1"
         assert response.data["city"] == "Warsaw"
+
+
+@pytest.mark.django_db
+def test_delete_geolocation(api_client, request_factory):
+    # Przygotowanie danych testowych
+    Geolocation.objects.create(
+        ip_address="192.168.1.1",
+        country="Poland",
+        region="Mazovia",
+        city="Warsaw",
+        latitude=52.2297,
+        longitude=21.0122,
+    )
+
+    # Tworzenie requestu z parametrem IP do usunięcia
+    request = request_factory.delete("/geolocation/?ip=192.168.1.1")
+    view = GeolocationView.as_view()
+
+    # Wywołanie widoku
+    response = view(request)
+
+    # Sprawdzenie odpowiedzi
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+    assert not Geolocation.objects.filter(ip_address="192.168.1.1").exists()
