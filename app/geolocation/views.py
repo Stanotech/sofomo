@@ -97,9 +97,9 @@ class GeolocationView(APIView):
 
         try:
             geolocation = (
-                Geolocation.objects.get(ip_address=ip)
+                Geolocation.objects.filter(ip_address=ip)
                 if ip
-                else Geolocation.objects.get(url=url)
+                else Geolocation.objects.filter(ip_address=ip)
             )
             geolocation.delete()
             return Response(
