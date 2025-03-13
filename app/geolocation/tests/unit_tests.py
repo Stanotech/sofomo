@@ -1,0 +1,41 @@
+import pytest
+from django.test import RequestFactory
+from rest_framework.test import APIClient
+from rest_framework import status
+from unittest.mock import patch, MagicMock
+from geolocation.views import GeolocationView
+from geolocation.models import Geolocation
+from geolocation.serializers import GeolocationSerializer
+
+
+@pytest.fixture
+def api_client():
+    return APIClient()
+
+
+@pytest.fixture
+def request_factory():
+    return RequestFactory()
+
+
+@pytest.mark.django_db
+def test_get_geolocation_by_ip(api_client, request_factory):
+
+    # creating test data
+    Geolocation.objects.create(
+        ip_address="192.168.1.1",
+        country="Poland",
+        region="Mazovia",
+        city="Warsaw",
+        latitude=52.2297,
+        longitude=21.0122,
+    )
+
+    request = request_factory.get("/geolocation/", {"ip": "192.168.1.1"})
+    view = GeolocationView.as_view()
+
+    response = view(request)
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data[0]["ip_address"] == "192.168.1.1"
+    assert response.data[0]["city"] == "Warsaw"
