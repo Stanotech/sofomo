@@ -39,3 +39,26 @@ def test_get_geolocation_by_ip(api_client, request_factory):
     assert response.status_code == status.HTTP_200_OK
     assert response.data[0]["ip_address"] == "192.168.1.1"
     assert response.data[0]["city"] == "Warsaw"
+
+
+@pytest.mark.django_db
+def test_get_geolocation_by_url(api_client, request_factory):
+
+    # creating test data
+    Geolocation.objects.create(
+        url="example.com",
+        country="USA",
+        region="California",
+        city="Los Angeles",
+        latitude=34.0522,
+        longitude=-118.2437,
+    )
+
+    request = request_factory.get("/geolocation/", {"url": "example.com"})
+    view = GeolocationView.as_view()
+
+    response = view(request)
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data[0]["url"] == "example.com"
+    assert response.data[0]["city"] == "Los Angeles"
