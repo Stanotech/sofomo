@@ -75,3 +75,29 @@ def test_get_geolocation_not_found(api_client, request_factory):
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert response.data["error"] == "No data found for this IP or URL."
+
+
+@pytest.mark.django_db
+def test_post_geolocation(api_client, request_factory):
+
+    # Mocking response from IPStack API
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "country_name": "Poland",
+        "region_name": "Mazovia",
+        "city": "Warsaw",
+        "latitude": 52.2297,
+        "longitude": 21.0122,
+    }
+
+    with patch("requests.get", return_value=mock_response):
+
+        request = request_factory.post("/geolocation/", {"ip": "192.168.1.1"})
+        view = GeolocationView.as_view()
+
+        response = view(request)
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["ip_address"] == "192.168.1.1"
+        assert response.data["city"] == "Warsaw"
