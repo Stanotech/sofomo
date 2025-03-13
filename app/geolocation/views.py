@@ -1,15 +1,16 @@
 import requests
-from django.db import OperationalError
 from django.conf import settings
+from django.db import OperationalError
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from .utils import is_valid_ip
+
 from .models import Geolocation
 from .serializers import GeolocationSerializer
 
 
 class GeolocationView(APIView):
-
     def get(self, request):
         ip = request.query_params.get("ip")
         url = request.query_params.get("url")
@@ -17,6 +18,12 @@ class GeolocationView(APIView):
         if not ip and not url:
             return Response(
                 {"error": "Please provide an IP or URL."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if ip and not is_valid_ip(ip):
+            return Response(
+                {"error": "Invalid IP address format."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -52,14 +59,13 @@ class GeolocationView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        ipstack_url = (
-            f"http://api.ipstack.com/{ip or url}?access_key={settings.IPSTACK_API_KEY}"
-        )
+        ipstack_url = f"http://api.ipstack.com/{ip or url}?access_key={settings.IPSTACK_API_KEY}"
         response = requests.get(ipstack_url)
 
         if response.status_code != 200:
             return Response(
-                {"error": "IPStack API error"}, status=status.HTTP_502_BAD_GATEWAY
+                {"error": "IPStack API error"},
+                status=status.HTTP_502_BAD_GATEWAY,
             )
 
         data = response.json()
@@ -67,11 +73,20 @@ class GeolocationView(APIView):
             return Response(
                 {
                     "error": "IPStack API error",
-                    "details": data.get("error", {}).get("info", "Unknown error"),
+                    "details": data.get("error", {}).get(
+                        "info", "Unknown error"
+                    ),
                 },
                 status=status.HTTP_502_BAD_GATEWAY,
             )
-
+        
+        required_keys = ["country_name", "region_name", "city", "latitude", "longitude"]
+        if not all(key in data for key in required_keys):
+            return Response(
+                {"error": "Invalid data from IPStack API"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+    
         geolocation = Geolocation.objects.create(
             ip_address=ip if ip else None,
             url=url if url else None,
@@ -103,9 +118,11 @@ class GeolocationView(APIView):
             )
             geolocation.delete()
             return Response(
-                {"message": "Data deleted."}, status=status.HTTP_204_NO_CONTENT
+                {"message": "Data deleted."},
+                status=status.HTTP_204_NO_CONTENT,
             )
         except Geolocation.DoesNotExist:
             return Response(
-                {"error": "Data not found."}, status=status.HTTP_404_NOT_FOUND
+                {"error": "Data not found."},
+                status=status.HTTP_404_NOT_FOUND,
             )
