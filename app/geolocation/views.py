@@ -41,21 +41,34 @@ class GeolocationView(APIView):
                 {"error": "Database is not available"},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-    
+
     def post(self, request):
-        ip = request.data.get('ip')
-        url = request.data.get('url')
+        ip = request.data.get("ip")
+        url = request.data.get("url")
 
         if not ip and not url:
-            return Response({"error": "Please give IP or URL."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Please give IP or URL."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         ipstack_url = f"http://api.ipstack.com/{ip or url}?access_key={IPSTACK_API_KEY}"
         response = requests.get(ipstack_url)
+        print(response)
 
         if response.status_code != 200:
-            return Response({"error": "IPStack API error"}, status=status.HTTP_502_BAD_GATEWAY)
+            return Response(
+                {"error": "IPStack API error"}, status=status.HTTP_502_BAD_GATEWAY
+            )
 
         data = response.json()
+        if not data.get("success", True):  # Domyślnie True dla starszych wersji API
+            return Response(
+                {
+                    "error": "IPStack API error",
+                    "details": data.get("error", {}).get("info", "Unknown error"),
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
         geolocation = Geolocation.objects.create(
             ip_address=ip if ip else None,
