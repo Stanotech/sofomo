@@ -80,3 +80,27 @@ class GeolocationView(APIView):
 
         serializer = GeolocationSerializer(geolocation)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def delete(self, request):
+        ip = request.query_params.get("ip")
+        url = request.query_params.get("url")
+
+        if not ip and not url:
+            return Response(
+                {"error": "Please give IP or URL."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            geolocation = (
+                Geolocation.objects.get(ip_address=ip)
+                if ip
+                else Geolocation.objects.get(url=url)
+            )
+            geolocation.delete()
+            return Response(
+                {"message": "Data deleted."}, status=status.HTTP_204_NO_CONTENT
+            )
+        except Geolocation.DoesNotExist:
+            return Response(
+                {"error": "Data not found."}, status=status.HTTP_404_NOT_FOUND
+            )
