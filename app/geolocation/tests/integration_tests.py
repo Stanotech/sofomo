@@ -51,3 +51,22 @@ def test_integration_post_geolocation(api_client, requests_mock):
     assert response.status_code == status.HTTP_201_CREATED
     assert response.data["ip_address"] == "192.168.1.1"
     assert response.data["city"] == "Warsaw"
+
+
+@pytest.mark.django_db
+def test_integration_delete_geolocation(api_client):
+
+    # creating test data
+    Geolocation.objects.create(
+        ip_address="192.168.1.1",
+        country="Poland",
+        region="Mazovia",
+        city="Warsaw",
+        latitude=52.2297,
+        longitude=21.0122,
+    )
+
+    response = api_client.delete(reverse("geolocation") + "?ip=192.168.1.1")
+
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+    assert not Geolocation.objects.filter(ip_address="192.168.1.1").exists()
