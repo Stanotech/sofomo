@@ -121,3 +121,31 @@ def test_delete_geolocation(api_client, request_factory):
     # Sprawdzenie odpowiedzi
     assert response.status_code == status.HTTP_204_NO_CONTENT
     assert not Geolocation.objects.filter(ip_address="192.168.1.1").exists()
+
+
+@pytest.mark.django_db
+def test_post_geolocation_ipstack_error(api_client, request_factory):
+    # Mockowanie błędu z IPStack API
+    mock_response = MagicMock()
+    mock_response.status_code = 502
+    mock_response.json.return_value = {"error": "Internal Server Error"}
+
+    with patch("requests.get", return_value=mock_response):
+        request = request_factory.post("/geolocation/", {"ip": "192.168.1.1"})
+        view = GeolocationView.as_view()
+
+        response = view(request)
+
+        assert response.status_code == status.HTTP_502_BAD_GATEWAY
+        assert response.data["error"] == "IPStack API error"
+        
+
+@pytest.mark.django_db
+def test_get_geolocation_invalid_ip(api_client, request_factory):
+    request = request_factory.get("/geolocation/", {"ip": "invalid_ip"})
+    view = GeolocationView.as_view()
+
+    response = view(request)
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.data["error"] == "Invalid IP address format."
