@@ -77,7 +77,6 @@ def test_get_geolocation_not_found(api_client, request_factory):
 
 @pytest.mark.django_db
 def test_post_geolocation(api_client, request_factory):
-
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.json.return_value = {
@@ -101,7 +100,6 @@ def test_post_geolocation(api_client, request_factory):
 
 @pytest.mark.django_db
 def test_delete_geolocation(api_client, request_factory):
-
     Geolocation.objects.create(
         ip_address="192.168.1.1",
         country="Poland",
@@ -122,7 +120,6 @@ def test_delete_geolocation(api_client, request_factory):
 
 @pytest.mark.django_db
 def test_post_geolocation_ipstack_error(api_client, request_factory):
-
     mock_response = MagicMock()
     mock_response.status_code = 502
     mock_response.json.return_value = {"error": "Internal Server Error"}
@@ -150,7 +147,6 @@ def test_get_geolocation_invalid_ip(api_client, request_factory):
 
 @pytest.mark.django_db
 def test_post_geolocation_invalid_ipstack_data(api_client, request_factory):
-
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.json.return_value = {

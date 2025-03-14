@@ -3,29 +3,50 @@ from django.conf import settings
 from django.db import OperationalError
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.request import Request
 from rest_framework.views import APIView
-from .utils import is_valid_ip
+from typing import Optional
 
 from .models import Geolocation
 from .serializers import GeolocationSerializer
+from .utils import is_valid_ip
 
 
 class GeolocationView(APIView):
-    def get(self, request):
-        ip = request.query_params.get("ip")
-        url = request.query_params.get("url")
+    """
+    API endpoint to retrieve and store geolocation data for IP addresses and URLs.
+    """
+
+    def get_ip_or_url(self, request: Request) -> tuple[Optional[str], Optional[str], Optional[Response]]:
+        """
+        Helper function to extract and validate IP or URL from the request.
+        """
+        
+        ip: Optional[str] = request.query_params.get("ip") or request.data.get("ip")
+        url: Optional[str] = request.query_params.get("url") or request.data.get("url")
 
         if not ip and not url:
-            return Response(
-                {"error": "Please provide an IP or URL."},
-                status=status.HTTP_400_BAD_REQUEST,
+            return None, None, Response(
+                {"error": "Please provide an IP or URL."}, 
+                status=status.HTTP_400_BAD_REQUEST
             )
 
         if ip and not is_valid_ip(ip):
-            return Response(
-                {"error": "Invalid IP address format."},
-                status=status.HTTP_400_BAD_REQUEST,
+            return None, None, Response(
+                {"error": "Invalid IP address format."}, 
+                status=status.HTTP_400_BAD_REQUEST
             )
+
+        return ip, url, None
+    
+    def get(self, request: Request) -> Response:
+        """
+        Retrieve geolocation data for a given IP or URL.
+        """
+
+        ip, url, error_response = self.get_ip_or_url(request)
+        if error_response:
+            return error_response
 
         try:
             geolocations = (
@@ -49,15 +70,14 @@ class GeolocationView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-    def post(self, request):
-        ip = request.data.get("ip")
-        url = request.data.get("url")
+    def post(self, request: Request) -> Response:
+        """
+        Retrieve and store geolocation data for the given IP or URL.
+        """
 
-        if not ip and not url:
-            return Response(
-                {"error": "Please provide IP or URL."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        ip, url, error_response = self.get_ip_or_url(request)
+        if error_response:
+            return error_response
 
         ipstack_url = f"http://api.ipstack.com/{ip or url}?access_key={settings.IPSTACK_API_KEY}"
         response = requests.get(ipstack_url)
@@ -79,14 +99,20 @@ class GeolocationView(APIView):
                 },
                 status=status.HTTP_502_BAD_GATEWAY,
             )
-        
-        required_keys = ["country_name", "region_name", "city", "latitude", "longitude"]
+
+        required_keys = [
+            "country_name",
+            "region_name",
+            "city",
+            "latitude",
+            "longitude",
+        ]
         if not all(key in data for key in required_keys):
             return Response(
                 {"error": "Invalid data from IPStack API"},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
-    
+
         geolocation = Geolocation.objects.create(
             ip_address=ip if ip else None,
             url=url if url else None,
@@ -100,15 +126,14 @@ class GeolocationView(APIView):
         serializer = GeolocationSerializer(geolocation)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    def delete(self, request):
-        ip = request.query_params.get("ip")
-        url = request.query_params.get("url")
+    def delete(self, request: Request) -> Response:
+        """
+        Delete geolocation data for a given IP or URL.
+        """
 
-        if not ip and not url:
-            return Response(
-                {"error": "Please provide IP or URL."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        ip, url, error_response = self.get_ip_or_url(request)
+        if error_response:
+            return error_response
 
         try:
             geolocation = (
