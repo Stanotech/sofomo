@@ -4,10 +4,10 @@ from django.db import OperationalError
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .utils import is_valid_ip
 
 from .models import Geolocation
 from .serializers import GeolocationSerializer
+from .utils import is_valid_ip
 
 
 class GeolocationView(APIView):
@@ -79,14 +79,20 @@ class GeolocationView(APIView):
                 },
                 status=status.HTTP_502_BAD_GATEWAY,
             )
-        
-        required_keys = ["country_name", "region_name", "city", "latitude", "longitude"]
+
+        required_keys = [
+            "country_name",
+            "region_name",
+            "city",
+            "latitude",
+            "longitude",
+        ]
         if not all(key in data for key in required_keys):
             return Response(
                 {"error": "Invalid data from IPStack API"},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
-    
+
         geolocation = Geolocation.objects.create(
             ip_address=ip if ip else None,
             url=url if url else None,
