@@ -4,6 +4,7 @@ from django.db import OperationalError
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from .utils import is_valid_ip
 
 from .models import Geolocation
 from .serializers import GeolocationSerializer
@@ -17,6 +18,12 @@ class GeolocationView(APIView):
         if not ip and not url:
             return Response(
                 {"error": "Please provide an IP or URL."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if ip and not is_valid_ip(ip):
+            return Response(
+                {"error": "Invalid IP address format."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
