@@ -1,11 +1,12 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 from django.test import RequestFactory
-from rest_framework.test import APIClient
 from rest_framework import status
-from unittest.mock import patch, MagicMock
-from geolocation.views import GeolocationView
+from rest_framework.test import APIClient
+
 from geolocation.models import Geolocation
-from geolocation.serializers import GeolocationSerializer
+from geolocation.views import GeolocationView
 
 
 @pytest.fixture
@@ -20,7 +21,6 @@ def request_factory():
 
 @pytest.mark.django_db
 def test_get_geolocation_by_ip(api_client, request_factory):
-
     # creating test data
     Geolocation.objects.create(
         ip_address="192.168.1.1",
@@ -43,7 +43,6 @@ def test_get_geolocation_by_ip(api_client, request_factory):
 
 @pytest.mark.django_db
 def test_get_geolocation_by_url(api_client, request_factory):
-
     # creating test data
     Geolocation.objects.create(
         url="example.com",
@@ -66,7 +65,6 @@ def test_get_geolocation_by_url(api_client, request_factory):
 
 @pytest.mark.django_db
 def test_get_geolocation_not_found(api_client, request_factory):
-
     # creating request with non-existent IP
     request = request_factory.get("/geolocation/", {"ip": "10.0.0.1"})
     view = GeolocationView.as_view()
@@ -79,7 +77,6 @@ def test_get_geolocation_not_found(api_client, request_factory):
 
 @pytest.mark.django_db
 def test_post_geolocation(api_client, request_factory):
-
     # Mocking response from IPStack API
     mock_response = MagicMock()
     mock_response.status_code = 200
@@ -92,7 +89,6 @@ def test_post_geolocation(api_client, request_factory):
     }
 
     with patch("requests.get", return_value=mock_response):
-
         request = request_factory.post("/geolocation/", {"ip": "192.168.1.1"})
         view = GeolocationView.as_view()
 

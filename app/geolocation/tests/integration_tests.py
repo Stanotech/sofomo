@@ -1,8 +1,9 @@
 import pytest
 from django.conf import settings
 from django.urls import reverse
-from rest_framework.test import APIClient
 from rest_framework import status
+from rest_framework.test import APIClient
+
 from geolocation.models import Geolocation
 
 
@@ -13,7 +14,6 @@ def api_client():
 
 @pytest.mark.django_db
 def test_integration_get_geolocation_by_ip(api_client):
-
     # creating test data
     Geolocation.objects.create(
         ip_address="192.168.1.1",
@@ -33,7 +33,6 @@ def test_integration_get_geolocation_by_ip(api_client):
 
 @pytest.mark.django_db
 def test_integration_post_geolocation(api_client, requests_mock):
-
     # Mocking response from IPStack API
     requests_mock.get(
         f"http://api.ipstack.com/192.168.1.1?access_key={settings.IPSTACK_API_KEY}",
@@ -55,7 +54,6 @@ def test_integration_post_geolocation(api_client, requests_mock):
 
 @pytest.mark.django_db
 def test_integration_delete_geolocation(api_client):
-
     # creating test data
     Geolocation.objects.create(
         ip_address="192.168.1.1",
