@@ -79,7 +79,14 @@ class GeolocationView(APIView):
                 },
                 status=status.HTTP_502_BAD_GATEWAY,
             )
-
+        
+        required_keys = ["country_name", "region_name", "city", "latitude", "longitude"]
+        if not all(key in data for key in required_keys):
+            return Response(
+                {"error": "Invalid data from IPStack API"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+    
         geolocation = Geolocation.objects.create(
             ip_address=ip if ip else None,
             url=url if url else None,

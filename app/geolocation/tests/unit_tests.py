@@ -77,7 +77,7 @@ def test_get_geolocation_not_found(api_client, request_factory):
 
 @pytest.mark.django_db
 def test_post_geolocation(api_client, request_factory):
-    # Mocking response from IPStack API
+
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.json.return_value = {
@@ -101,7 +101,7 @@ def test_post_geolocation(api_client, request_factory):
 
 @pytest.mark.django_db
 def test_delete_geolocation(api_client, request_factory):
-    # Przygotowanie danych testowych
+
     Geolocation.objects.create(
         ip_address="192.168.1.1",
         country="Poland",
@@ -111,21 +111,18 @@ def test_delete_geolocation(api_client, request_factory):
         longitude=21.0122,
     )
 
-    # Tworzenie requestu z parametrem IP do usunięcia
     request = request_factory.delete("/geolocation/?ip=192.168.1.1")
     view = GeolocationView.as_view()
 
-    # Wywołanie widoku
     response = view(request)
 
-    # Sprawdzenie odpowiedzi
     assert response.status_code == status.HTTP_204_NO_CONTENT
     assert not Geolocation.objects.filter(ip_address="192.168.1.1").exists()
 
 
 @pytest.mark.django_db
 def test_post_geolocation_ipstack_error(api_client, request_factory):
-    # Mockowanie błędu z IPStack API
+
     mock_response = MagicMock()
     mock_response.status_code = 502
     mock_response.json.return_value = {"error": "Internal Server Error"}
@@ -138,7 +135,7 @@ def test_post_geolocation_ipstack_error(api_client, request_factory):
 
         assert response.status_code == status.HTTP_502_BAD_GATEWAY
         assert response.data["error"] == "IPStack API error"
-        
+
 
 @pytest.mark.django_db
 def test_get_geolocation_invalid_ip(api_client, request_factory):
@@ -149,3 +146,24 @@ def test_get_geolocation_invalid_ip(api_client, request_factory):
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert response.data["error"] == "Invalid IP address format."
+
+
+@pytest.mark.django_db
+def test_post_geolocation_invalid_ipstack_data(api_client, request_factory):
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "latitude": 52.2297,
+        "longitude": 21.0122,
+        # No "country_name" key
+    }
+
+    with patch("requests.get", return_value=mock_response):
+        request = request_factory.post("/geolocation/", {"ip": "192.168.1.1"})
+        view = GeolocationView.as_view()
+
+        response = view(request)
+
+        assert response.status_code == status.HTTP_502_BAD_GATEWAY
+        assert response.data["error"] == "Invalid data from IPStack API"
