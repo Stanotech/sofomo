@@ -2,8 +2,8 @@ from django.db import models
 
 
 class Geolocation(models.Model):
-    ip_address = models.GenericIPAddressField(null=True, blank=True)
-    url = models.URLField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True, db_index=True)
+    url = models.URLField(null=True, blank=True, db_index=True)
     country = models.CharField(max_length=100)
     region = models.CharField(max_length=100)
     city = models.CharField(max_length=100)
