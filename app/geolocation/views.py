@@ -1,10 +1,12 @@
 import requests
 from django.conf import settings
 from django.db import OperationalError
+from django.db.models import QuerySet
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.request import Request
 from rest_framework.views import APIView
+
 from typing import Optional
 
 from .models import Geolocation
@@ -16,50 +18,21 @@ class GeolocationView(APIView):
     """
     API endpoint to retrieve and store geolocation data for IP addresses and URLs.
     """
-
-    def get_ip_or_url(self, request: Request) -> tuple[Optional[str], Optional[str], Optional[Response]]:
-        """
-        Helper function to extract and validate IP or URL from the request.
-        """
-        
-        ip: Optional[str] = request.query_params.get("ip") or request.data.get("ip")
-        url: Optional[str] = request.query_params.get("url") or request.data.get("url")
-
-        if not ip and not url:
-            return None, None, Response(
-                {"error": "Please provide an IP or URL."}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if ip and not is_valid_ip(ip):
-            return None, None, Response(
-                {"error": "Invalid IP address format."}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        return ip, url, None
     
     def get(self, request: Request) -> Response:
         """
         Retrieve geolocation data for a given IP or URL.
         """
 
-        ip, url, error_response = self.get_ip_or_url(request)
+        ip, url, error_response = self._get_ip_or_url(request)
         if error_response:
             return error_response
 
         try:
-            geolocations = (
-                Geolocation.objects.filter(ip_address=ip)
-                if ip
-                else Geolocation.objects.filter(url=url)
-            )
+            geolocations = self._get_geolocations(ip, url)
 
-            if not geolocations.exists():
-                return Response(
-                    {"error": "No data found for this IP or URL."},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
+            if not geolocations:
+                return Response({"error": "No data found for this IP or URL."}, status=status.HTTP_404_NOT_FOUND)
 
             serializer = GeolocationSerializer(geolocations, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -75,7 +48,7 @@ class GeolocationView(APIView):
         Retrieve and store geolocation data for the given IP or URL.
         """
 
-        ip, url, error_response = self.get_ip_or_url(request)
+        ip, url, error_response = self._get_ip_or_url(request)
         if error_response:
             return error_response
 
@@ -131,23 +104,51 @@ class GeolocationView(APIView):
         Delete geolocation data for a given IP or URL.
         """
 
-        ip, url, error_response = self.get_ip_or_url(request)
+        ip, url, error_response = self._get_ip_or_url(request)
         if error_response:
             return error_response
 
         try:
-            geolocation = (
-                Geolocation.objects.filter(ip_address=ip)
-                if ip
-                else Geolocation.objects.filter(ip_address=ip)
-            )
-            geolocation.delete()
-            return Response(
-                {"message": "Data deleted."},
-                status=status.HTTP_204_NO_CONTENT,
-            )
+            geolocations = self._get_geolocations(ip, url)
+            geolocations.delete()
+            
+            return Response({"message": "Data deleted."},status=status.HTTP_204_NO_CONTENT,)
+        
         except Geolocation.DoesNotExist:
             return Response(
                 {"error": "Data not found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+    def _get_ip_or_url(self, request: Request) -> tuple[Optional[str], Optional[str], Optional[Response]]:
+        """
+        Helper function to extract and validate IP or URL from the request.
+        """
+        
+        ip: Optional[str] = request.query_params.get("ip") or request.data.get("ip")
+        url: Optional[str] = request.query_params.get("url") or request.data.get("url")
+
+        if not ip and not url:
+            return None, None, Response(
+                {"error": "Please provide an IP or URL."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if ip and not is_valid_ip(ip):
+            return None, None, Response(
+                {"error": "Invalid IP address format."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return ip, url, None
+    
+    def _get_geolocations(self, ip: str | None, url: str | None) -> QuerySet:
+        """
+        Helper function to filter geolocation records by IP or URL.
+        """
+
+        if ip:
+            return Geolocation.objects.filter(ip_address=ip)
+        elif url:
+            return Geolocation.objects.filter(url=url)
+        return Geolocation.objects.none()
