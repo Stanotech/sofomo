@@ -169,7 +169,10 @@ def test_post_geolocation_invalid_ipstack_data(api_client, request_factory):
 @pytest.mark.django_db
 def test_get_geolocation_database_unavailable(api_client, request_factory):
     # Simulating database being unavailable
-    with patch('django.db.models.query.QuerySet.filter', side_effect=OperationalError("Database is not available.")):
+    with patch(
+        "django.db.models.query.QuerySet.filter",
+        side_effect=OperationalError("Database is not available."),
+    ):
         request = request_factory.get("/geolocation/", {"ip": "192.168.1.1"})
         view = GeolocationView.as_view()
 
@@ -182,7 +185,10 @@ def test_get_geolocation_database_unavailable(api_client, request_factory):
 @pytest.mark.django_db
 def test_post_geolocation_database_unavailable(api_client, request_factory):
     # Simulating database being unavailable
-    with patch('geolocation.models.Geolocation.objects.create', side_effect=OperationalError("Database is not available.")):
+    with patch(
+        "geolocation.models.Geolocation.objects.create",
+        side_effect=OperationalError("Database is not available."),
+    ):
         request = request_factory.post("/geolocation/", {"ip": "192.168.1.1"})
         view = GeolocationView.as_view()
 
@@ -195,7 +201,10 @@ def test_post_geolocation_database_unavailable(api_client, request_factory):
 @pytest.mark.django_db
 def test_delete_geolocation_database_unavailable(api_client, request_factory):
     # Simulating database being unavailable
-    with patch('django.db.models.query.QuerySet.delete', side_effect=OperationalError("Database is not available.")):
+    with patch(
+        "django.db.models.query.QuerySet.delete",
+        side_effect=OperationalError("Database is not available."),
+    ):
         request = request_factory.delete("/geolocation/?ip=192.168.1.1")
         view = GeolocationView.as_view()
 
@@ -203,4 +212,3 @@ def test_delete_geolocation_database_unavailable(api_client, request_factory):
 
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert response.data["error"] == "Database is not available."
-

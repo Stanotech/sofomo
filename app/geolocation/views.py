@@ -63,7 +63,7 @@ class GeolocationView(APIView):
         Retrieve and store geolocation data for the given IP or URL.
         """
 
-        if (not hasattr(settings, "IPSTACK_API_KEY") or not settings.IPSTACK_API_KEY):
+        if not hasattr(settings, "IPSTACK_API_KEY") or not settings.IPSTACK_API_KEY:
             return Response(
                 {"error": "Missing IPStack API key in settings."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -100,9 +100,7 @@ class GeolocationView(APIView):
             return Response(
                 {
                     "error": "IPStack API returned an error",
-                    "details": data.get("error", {}).get(
-                        "info", "Unknown error"
-                    ),
+                    "details": data.get("error", {}).get("info", "Unknown error"),
                 },
                 status=status.HTTP_502_BAD_GATEWAY,
             )
@@ -152,18 +150,17 @@ class GeolocationView(APIView):
             {"message": "Data deleted."}, status=status.HTTP_204_NO_CONTENT
         )
 
-    def _get_ip_or_url(self, request: Request
+    def _get_ip_or_url(
+        self, request: Request
     ) -> tuple[Optional[str], Optional[str], Optional[Response]]:
         """
         Helper function to extract and validate IP or URL from the request.
         """
 
-        ip: Optional[str] = request.query_params.get("ip") or request.data.get(
-            "ip"
-        )
-        url: Optional[str] = request.query_params.get(
+        ip: Optional[str] = request.query_params.get("ip") or request.data.get("ip")
+        url: Optional[str] = request.query_params.get("url") or request.data.get(
             "url"
-        ) or request.data.get("url")
+        )
 
         if not ip and not url:
             return (
