@@ -7,3 +7,6 @@ requests
 requests_mock
 python-dotenv
 dj-database-url
+isort
+ruff
+black

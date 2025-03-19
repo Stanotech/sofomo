@@ -1,7 +1,7 @@
 import ipaddress
 
 
-def is_valid_ip(ip):
+def is_valid_ip(ip: str) -> bool:
     try:
         ipaddress.ip_address(ip)
         return True
