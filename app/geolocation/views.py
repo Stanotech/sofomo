@@ -108,12 +108,19 @@ class GeolocationView(APIView):
         if error_response:
             return error_response        
 
-        deleted, _ = self._get_geolocations(ip, url).delete()
+        try:
+            deleted, _ = self._get_geolocations(ip, url).delete()
 
-        if deleted == 0:
-            return Response({"error": "Data not found."},status=status.HTTP_404_NOT_FOUND)
+            if deleted == 0:
+                return Response({"error": "Data not found."},status=status.HTTP_404_NOT_FOUND)
 
-        return Response({"message": "Data deleted."}, status=status.HTTP_204_NO_CONTENT)
+            return Response({"message": "Data deleted."}, status=status.HTTP_204_NO_CONTENT)
+
+        except OperationalError:
+            return Response(
+                {"error": "Database is not available."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
     def _get_ip_or_url(self, request: Request) -> tuple[Optional[str], Optional[str], Optional[Response]]:
         """
