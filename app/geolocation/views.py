@@ -86,18 +86,25 @@ class GeolocationView(APIView):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
-        geolocation = Geolocation.objects.create(
-            ip_address=ip if ip else None,
-            url=url if url else None,
-            country=data.get("country_name", ""),
-            region=data.get("region_name", ""),
-            city=data.get("city", ""),
-            latitude=data.get("latitude", 0),
-            longitude=data.get("longitude", 0),
-        )
+        try:            
+            geolocation = Geolocation.objects.create(
+                ip_address=ip if ip else None,
+                url=url if url else None,
+                country=data.get("country_name", ""),
+                region=data.get("region_name", ""),
+                city=data.get("city", ""),
+                latitude=data.get("latitude", 0),
+                longitude=data.get("longitude", 0),
+            )
 
-        serializer = GeolocationSerializer(geolocation)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+            serializer = GeolocationSerializer(geolocation)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except OperationalError:
+            return Response(
+                {"error": "Database is not available."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
     def delete(self, request: Request) -> Response:
         """
