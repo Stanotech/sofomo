@@ -3,6 +3,7 @@ from django.conf import settings
 from django.db import OperationalError
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.request import Request
 from rest_framework.views import APIView
 
 from .models import Geolocation
@@ -11,9 +12,9 @@ from .utils import is_valid_ip
 
 
 class GeolocationView(APIView):
-    def get(self, request):
-        ip = request.query_params.get("ip")
-        url = request.query_params.get("url")
+    def get(self, request: Request) -> Response:
+        ip: str = request.query_params.get("ip")
+        url: str = request.query_params.get("url")
 
         if not ip and not url:
             return Response(
@@ -49,9 +50,9 @@ class GeolocationView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-    def post(self, request):
-        ip = request.data.get("ip")
-        url = request.data.get("url")
+    def post(self, request: Request) -> Response:
+        ip: str = request.data.get("ip")
+        url: str = request.data.get("url")
 
         if not ip and not url:
             return Response(
@@ -106,9 +107,9 @@ class GeolocationView(APIView):
         serializer = GeolocationSerializer(geolocation)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    def delete(self, request):
-        ip = request.query_params.get("ip")
-        url = request.query_params.get("url")
+    def delete(self, request: Request) -> Response:
+        ip: str = request.query_params.get("ip")
+        url: str = request.query_params.get("url")
 
         if not ip and not url:
             return Response(
