@@ -1,8 +1,8 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from django.test import RequestFactory
 from django.db import OperationalError
+from django.test import RequestFactory
 from rest_framework import status
 from rest_framework.test import APIClient
 

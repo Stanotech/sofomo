@@ -1,14 +1,14 @@
+from functools import wraps
+from typing import Optional
+
 import requests
 from django.conf import settings
-from functools import wraps
 from django.db import OperationalError
 from django.db.models import QuerySet
 from rest_framework import status
-from rest_framework.response import Response
 from rest_framework.request import Request
+from rest_framework.response import Response
 from rest_framework.views import APIView
-
-from typing import Optional
 
 from .models import Geolocation
 from .serializers import GeolocationSerializer
