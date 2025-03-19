@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from django.test import RequestFactory
+from django.db import OperationalError
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -163,3 +164,43 @@ def test_post_geolocation_invalid_ipstack_data(api_client, request_factory):
 
         assert response.status_code == status.HTTP_502_BAD_GATEWAY
         assert response.data["error"] == "Invalid data from IPStack API"
+
+
+@pytest.mark.django_db
+def test_get_geolocation_database_unavailable(api_client, request_factory):
+    # Simulating database being unavailable
+    with patch('django.db.models.query.QuerySet.filter', side_effect=OperationalError("Database is not available.")):
+        request = request_factory.get("/geolocation/", {"ip": "192.168.1.1"})
+        view = GeolocationView.as_view()
+
+        response = view(request)
+
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.data["error"] == "Database is not available."
+
+
+@pytest.mark.django_db
+def test_post_geolocation_database_unavailable(api_client, request_factory):
+    # Simulating database being unavailable
+    with patch('geolocation.models.Geolocation.objects.create', side_effect=OperationalError("Database is not available.")):
+        request = request_factory.post("/geolocation/", {"ip": "192.168.1.1"})
+        view = GeolocationView.as_view()
+
+        response = view(request)
+
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.data["error"] == "Database is not available."
+
+
+@pytest.mark.django_db
+def test_delete_geolocation_database_unavailable(api_client, request_factory):
+    # Simulating database being unavailable
+    with patch('django.db.models.query.QuerySet.delete', side_effect=OperationalError("Database is not available.")):
+        request = request_factory.delete("/geolocation/?ip=192.168.1.1")
+        view = GeolocationView.as_view()
+
+        response = view(request)
+
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.data["error"] == "Database is not available."
+
