@@ -1,5 +1,6 @@
 import requests
 from django.conf import settings
+from functools import wraps
 from django.db import OperationalError
 from django.db.models import QuerySet
 from rest_framework import status
@@ -14,11 +15,29 @@ from .serializers import GeolocationSerializer
 from .utils import is_valid_ip
 
 
+def handle_db_error(func):
+        """
+        Dekorator for handle database errors.
+        """
+
+        @wraps(func)
+        def wrapper(self, request, *args, **kwargs):
+            try:
+                return func(self, request, *args, **kwargs)
+            except OperationalError:
+                return Response(
+                    {"error": "Database is not available."},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+        return wrapper
+
+
 class GeolocationView(APIView):
     """
     API endpoint to retrieve and store geolocation data for IP addresses and URLs.
     """
-    
+
+    @handle_db_error
     def get(self, request: Request) -> Response:
         """
         Retrieve geolocation data for a given IP or URL.
@@ -28,21 +47,14 @@ class GeolocationView(APIView):
         if error_response:
             return error_response
 
-        try:
-            geolocations = self._get_geolocations(ip, url)
+        geolocations = self._get_geolocations(ip, url)
+        if not geolocations:
+            return Response({"error": "No data found for this IP or URL."}, status=status.HTTP_404_NOT_FOUND)
+        serializer = GeolocationSerializer(geolocations, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
-            if not geolocations:
-                return Response({"error": "No data found for this IP or URL."}, status=status.HTTP_404_NOT_FOUND)
-
-            serializer = GeolocationSerializer(geolocations, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-        except OperationalError:
-            return Response(
-                {"error": "Database is not available."},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-
+        
+    @handle_db_error
     def post(self, request: Request) -> Response:
         """
         Retrieve and store geolocation data for the given IP or URL.
@@ -85,27 +97,21 @@ class GeolocationView(APIView):
                 {"error": "Invalid data from IPStack API"},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
+         
+        geolocation = Geolocation.objects.create(
+            ip_address=ip if ip else None,
+            url=url if url else None,
+            country=data.get("country_name", ""),
+            region=data.get("region_name", ""),
+            city=data.get("city", ""),
+            latitude=data.get("latitude", 0),
+            longitude=data.get("longitude", 0),
+        )
+        serializer = GeolocationSerializer(geolocation)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        try:            
-            geolocation = Geolocation.objects.create(
-                ip_address=ip if ip else None,
-                url=url if url else None,
-                country=data.get("country_name", ""),
-                region=data.get("region_name", ""),
-                city=data.get("city", ""),
-                latitude=data.get("latitude", 0),
-                longitude=data.get("longitude", 0),
-            )
 
-            serializer = GeolocationSerializer(geolocation)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        except OperationalError:
-            return Response(
-                {"error": "Database is not available."},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-
+    @handle_db_error
     def delete(self, request: Request) -> Response:
         """
         Delete geolocation data for a given IP or URL.
@@ -113,21 +119,13 @@ class GeolocationView(APIView):
 
         ip, url, error_response = self._get_ip_or_url(request)
         if error_response:
-            return error_response        
+            return error_response
 
-        try:
-            deleted, _ = self._get_geolocations(ip, url).delete()
-
-            if deleted == 0:
-                return Response({"error": "Data not found."},status=status.HTTP_404_NOT_FOUND)
-
-            return Response({"message": "Data deleted."}, status=status.HTTP_204_NO_CONTENT)
-
-        except OperationalError:
-            return Response(
-                {"error": "Database is not available."},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
+        deleted, _ = self._get_geolocations(ip, url).delete()
+        if deleted == 0:
+            return Response({"error": "Data not found."},status=status.HTTP_404_NOT_FOUND)
+        return Response({"message": "Data deleted."}, status=status.HTTP_204_NO_CONTENT)
+    
 
     def _get_ip_or_url(self, request: Request) -> tuple[Optional[str], Optional[str], Optional[Response]]:
         """
