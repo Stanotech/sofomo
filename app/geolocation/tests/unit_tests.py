@@ -1,27 +1,21 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from django.test import RequestFactory
 from django.db import OperationalError
+from django.test import RequestFactory
 from rest_framework import status
-from rest_framework.test import APIClient
 
 from geolocation.models import Geolocation
 from geolocation.views import GeolocationView
 
 
 @pytest.fixture
-def api_client():
-    return APIClient()
-
-
-@pytest.fixture
-def request_factory():
+def request_factory() -> RequestFactory:
     return RequestFactory()
 
 
 @pytest.mark.django_db
-def test_get_geolocation_by_ip(api_client, request_factory):
+def test_get_geolocation_by_ip(request_factory: RequestFactory) -> None:
     # creating test data
     Geolocation.objects.create(
         ip_address="192.168.1.1",
@@ -43,7 +37,7 @@ def test_get_geolocation_by_ip(api_client, request_factory):
 
 
 @pytest.mark.django_db
-def test_get_geolocation_by_url(api_client, request_factory):
+def test_get_geolocation_by_url(request_factory: RequestFactory) -> None:
     # creating test data
     Geolocation.objects.create(
         url="example.com",
@@ -65,7 +59,7 @@ def test_get_geolocation_by_url(api_client, request_factory):
 
 
 @pytest.mark.django_db
-def test_get_geolocation_not_found(api_client, request_factory):
+def test_get_geolocation_not_found(request_factory: RequestFactory) -> None:
     # creating request with non-existent IP
     request = request_factory.get("/geolocation/", {"ip": "10.0.0.1"})
     view = GeolocationView.as_view()
@@ -77,7 +71,7 @@ def test_get_geolocation_not_found(api_client, request_factory):
 
 
 @pytest.mark.django_db
-def test_post_geolocation(api_client, request_factory):
+def test_post_geolocation(request_factory: RequestFactory) -> None:
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.json.return_value = {
@@ -100,7 +94,7 @@ def test_post_geolocation(api_client, request_factory):
 
 
 @pytest.mark.django_db
-def test_delete_geolocation(api_client, request_factory):
+def test_delete_geolocation(request_factory: RequestFactory) -> None:
     Geolocation.objects.create(
         ip_address="192.168.1.1",
         country="Poland",
@@ -120,7 +114,9 @@ def test_delete_geolocation(api_client, request_factory):
 
 
 @pytest.mark.django_db
-def test_post_geolocation_ipstack_error(api_client, request_factory):
+def test_post_geolocation_ipstack_error(
+    request_factory: RequestFactory,
+) -> None:
     mock_response = MagicMock()
     mock_response.status_code = 502
     mock_response.json.return_value = {"error": "Internal Server Error"}
@@ -136,7 +132,7 @@ def test_post_geolocation_ipstack_error(api_client, request_factory):
 
 
 @pytest.mark.django_db
-def test_get_geolocation_invalid_ip(api_client, request_factory):
+def test_get_geolocation_invalid_ip(request_factory: RequestFactory) -> None:
     request = request_factory.get("/geolocation/", {"ip": "invalid_ip"})
     view = GeolocationView.as_view()
 
@@ -147,7 +143,9 @@ def test_get_geolocation_invalid_ip(api_client, request_factory):
 
 
 @pytest.mark.django_db
-def test_post_geolocation_invalid_ipstack_data(api_client, request_factory):
+def test_post_geolocation_invalid_ipstack_data(
+    request_factory: RequestFactory,
+) -> None:
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.json.return_value = {
@@ -167,9 +165,14 @@ def test_post_geolocation_invalid_ipstack_data(api_client, request_factory):
 
 
 @pytest.mark.django_db
-def test_get_geolocation_database_unavailable(api_client, request_factory):
+def test_get_geolocation_database_unavailable(
+    request_factory: RequestFactory,
+) -> None:
     # Simulating database being unavailable
-    with patch('django.db.models.query.QuerySet.filter', side_effect=OperationalError("Database is not available.")):
+    with patch(
+        "django.db.models.query.QuerySet.filter",
+        side_effect=OperationalError("Database is not available."),
+    ):
         request = request_factory.get("/geolocation/", {"ip": "192.168.1.1"})
         view = GeolocationView.as_view()
 
@@ -180,9 +183,14 @@ def test_get_geolocation_database_unavailable(api_client, request_factory):
 
 
 @pytest.mark.django_db
-def test_post_geolocation_database_unavailable(api_client, request_factory):
+def test_post_geolocation_database_unavailable(
+    request_factory: RequestFactory,
+) -> None:
     # Simulating database being unavailable
-    with patch('geolocation.models.Geolocation.objects.create', side_effect=OperationalError("Database is not available.")):
+    with patch(
+        "geolocation.models.Geolocation.objects.create",
+        side_effect=OperationalError("Database is not available."),
+    ):
         request = request_factory.post("/geolocation/", {"ip": "192.168.1.1"})
         view = GeolocationView.as_view()
 
@@ -193,9 +201,14 @@ def test_post_geolocation_database_unavailable(api_client, request_factory):
 
 
 @pytest.mark.django_db
-def test_delete_geolocation_database_unavailable(api_client, request_factory):
+def test_delete_geolocation_database_unavailable(
+    request_factory: RequestFactory,
+) -> None:
     # Simulating database being unavailable
-    with patch('django.db.models.query.QuerySet.delete', side_effect=OperationalError("Database is not available.")):
+    with patch(
+        "django.db.models.query.QuerySet.delete",
+        side_effect=OperationalError("Database is not available."),
+    ):
         request = request_factory.delete("/geolocation/?ip=192.168.1.1")
         view = GeolocationView.as_view()
 
@@ -203,4 +216,3 @@ def test_delete_geolocation_database_unavailable(api_client, request_factory):
 
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert response.data["error"] == "Database is not available."
-
