@@ -40,6 +40,9 @@ class GeolocationView(APIView):
         return ip, url, None
     
     def get(self, request: Request) -> Response:
+        """
+        Retrieve geolocation data for a given IP or URL.
+        """
 
         ip, url, error_response = self.get_ip_or_url(request)
         if error_response:
@@ -68,6 +71,9 @@ class GeolocationView(APIView):
             )
 
     def post(self, request: Request) -> Response:
+        """
+        Retrieve and store geolocation data for the given IP or URL.
+        """
 
         ip, url, error_response = self.get_ip_or_url(request)
         if error_response:
@@ -121,7 +127,10 @@ class GeolocationView(APIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def delete(self, request: Request) -> Response:
-        
+        """
+        Delete geolocation data for a given IP or URL.
+        """
+
         ip, url, error_response = self.get_ip_or_url(request)
         if error_response:
             return error_response
