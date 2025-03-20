@@ -8,6 +8,10 @@ from rest_framework import status
 from geolocation.models import Geolocation
 from geolocation.views import GeolocationView
 
+GEOLOCATION_URL = "/geolocation/"
+EXAMPLE_DOMAIN = "example.com"
+REQUESTS_GET = "requests.get"
+DB_ERROR_MESSAGE = "Database is not available."
 
 @pytest.fixture
 def request_factory() -> RequestFactory:
@@ -26,7 +30,7 @@ def test_get_geolocation_by_ip(request_factory: RequestFactory) -> None:
         longitude=21.0122,
     )
 
-    request = request_factory.get("/geolocation/", {"ip": "192.168.1.1"})
+    request = request_factory.get(GEOLOCATION_URL, {"ip": "192.168.1.1"})
     view = GeolocationView.as_view()
 
     response = view(request)
@@ -40,7 +44,7 @@ def test_get_geolocation_by_ip(request_factory: RequestFactory) -> None:
 def test_get_geolocation_by_url(request_factory: RequestFactory) -> None:
     # creating test data
     Geolocation.objects.create(
-        url="example.com",
+        url=EXAMPLE_DOMAIN,
         country="USA",
         region="California",
         city="Los Angeles",
@@ -48,20 +52,20 @@ def test_get_geolocation_by_url(request_factory: RequestFactory) -> None:
         longitude=-118.2437,
     )
 
-    request = request_factory.get("/geolocation/", {"url": "example.com"})
+    request = request_factory.get(GEOLOCATION_URL, {"url": EXAMPLE_DOMAIN})
     view = GeolocationView.as_view()
 
     response = view(request)
 
     assert response.status_code == status.HTTP_200_OK
-    assert response.data[0]["url"] == "example.com"
+    assert response.data[0]["url"] == EXAMPLE_DOMAIN
     assert response.data[0]["city"] == "Los Angeles"
 
 
 @pytest.mark.django_db
 def test_get_geolocation_not_found(request_factory: RequestFactory) -> None:
     # creating request with non-existent IP
-    request = request_factory.get("/geolocation/", {"ip": "10.0.0.1"})
+    request = request_factory.get(GEOLOCATION_URL, {"ip": "10.0.0.1"})
     view = GeolocationView.as_view()
 
     response = view(request)
@@ -82,8 +86,8 @@ def test_post_geolocation(request_factory: RequestFactory) -> None:
         "longitude": 21.0122,
     }
 
-    with patch("requests.get", return_value=mock_response):
-        request = request_factory.post("/geolocation/", {"ip": "192.168.1.1"})
+    with patch(REQUESTS_GET, return_value=mock_response):
+        request = request_factory.post(GEOLOCATION_URL, {"ip": "192.168.1.1"})
         view = GeolocationView.as_view()
 
         response = view(request)
@@ -121,8 +125,8 @@ def test_post_geolocation_ipstack_error(
     mock_response.status_code = 502
     mock_response.json.return_value = {"error": "Internal Server Error"}
 
-    with patch("requests.get", return_value=mock_response):
-        request = request_factory.post("/geolocation/", {"ip": "192.168.1.1"})
+    with patch(REQUESTS_GET, return_value=mock_response):
+        request = request_factory.post(GEOLOCATION_URL, {"ip": "192.168.1.1"})
         view = GeolocationView.as_view()
 
         response = view(request)
@@ -133,7 +137,7 @@ def test_post_geolocation_ipstack_error(
 
 @pytest.mark.django_db
 def test_get_geolocation_invalid_ip(request_factory: RequestFactory) -> None:
-    request = request_factory.get("/geolocation/", {"ip": "invalid_ip"})
+    request = request_factory.get(GEOLOCATION_URL, {"ip": "invalid_ip"})
     view = GeolocationView.as_view()
 
     response = view(request)
@@ -154,8 +158,8 @@ def test_post_geolocation_invalid_ipstack_data(
         # No "country_name" key
     }
 
-    with patch("requests.get", return_value=mock_response):
-        request = request_factory.post("/geolocation/", {"ip": "192.168.1.1"})
+    with patch(REQUESTS_GET, return_value=mock_response):
+        request = request_factory.post(GEOLOCATION_URL, {"ip": "192.168.1.1"})
         view = GeolocationView.as_view()
 
         response = view(request)
@@ -171,15 +175,15 @@ def test_get_geolocation_database_unavailable(
     # Simulating database being unavailable
     with patch(
         "django.db.models.query.QuerySet.filter",
-        side_effect=OperationalError("Database is not available."),
+        side_effect=OperationalError(DB_ERROR_MESSAGE),
     ):
-        request = request_factory.get("/geolocation/", {"ip": "192.168.1.1"})
+        request = request_factory.get(GEOLOCATION_URL, {"ip": "192.168.1.1"})
         view = GeolocationView.as_view()
 
         response = view(request)
 
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-        assert response.data["error"] == "Database is not available."
+        assert response.data["error"] == DB_ERROR_MESSAGE
 
 
 @pytest.mark.django_db
@@ -189,15 +193,15 @@ def test_post_geolocation_database_unavailable(
     # Simulating database being unavailable
     with patch(
         "geolocation.models.Geolocation.objects.create",
-        side_effect=OperationalError("Database is not available."),
+        side_effect=OperationalError(DB_ERROR_MESSAGE),
     ):
-        request = request_factory.post("/geolocation/", {"ip": "192.168.1.1"})
+        request = request_factory.post(GEOLOCATION_URL, {"ip": "192.168.1.1"})
         view = GeolocationView.as_view()
 
         response = view(request)
 
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-        assert response.data["error"] == "Database is not available."
+        assert response.data["error"] == DB_ERROR_MESSAGE
 
 
 @pytest.mark.django_db
@@ -207,7 +211,7 @@ def test_delete_geolocation_database_unavailable(
     # Simulating database being unavailable
     with patch(
         "django.db.models.query.QuerySet.delete",
-        side_effect=OperationalError("Database is not available."),
+        side_effect=OperationalError(DB_ERROR_MESSAGE),
     ):
         request = request_factory.delete("/geolocation/?ip=192.168.1.1")
         view = GeolocationView.as_view()
@@ -215,4 +219,4 @@ def test_delete_geolocation_database_unavailable(
         response = view(request)
 
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-        assert response.data["error"] == "Database is not available."
+        assert response.data["error"] == DB_ERROR_MESSAGE
