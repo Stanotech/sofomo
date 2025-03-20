@@ -79,7 +79,7 @@ class GeolocationView(APIView):
         if error_response:
             return error_response
 
-        ipstack_url = f"http://api.ipstack.com/{ip or url}?access_key={settings.IPSTACK_API_KEY}"
+        ipstack_url = f"https://api.ipstack.com/{ip or url}?access_key={settings.IPSTACK_API_KEY}"
         response = requests.get(ipstack_url)
 
         if response.status_code != 200:

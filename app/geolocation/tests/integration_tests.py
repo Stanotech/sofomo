@@ -37,7 +37,7 @@ def test_integration_post_geolocation(
 ) -> None:
     # Mocking response from IPStack API
     requests_mock.get(
-        f"http://api.ipstack.com/192.168.1.1?access_key={settings.IPSTACK_API_KEY}",
+        f"https://api.ipstack.com/192.168.1.1?access_key={settings.IPSTACK_API_KEY}",
         json={
             "country_name": "Poland",
             "region_name": "Mazovia",
