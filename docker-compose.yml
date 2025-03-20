@@ -21,6 +21,8 @@ services:
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - IPSTACK_API_KEY=${IPSTACK_API_KEY}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
       - PYTHONUNBUFFERED=1
+      - DEBUG=${DEBUG}
     volumes:
       - ./app:/app
