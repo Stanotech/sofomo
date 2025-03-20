@@ -23,5 +23,6 @@ services:
       - IPSTACK_API_KEY=${IPSTACK_API_KEY}
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
       - PYTHONUNBUFFERED=1
+      - DEBUG=${DEBUG}
     volumes:
       - ./app:/app
