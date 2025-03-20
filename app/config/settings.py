@@ -23,7 +23,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-at8r1lwp8w*k=49ekdr*2+r1u^169%!cxeo&4)0zfyw$s94tb2"
+SECRET_KEY = (
+    "django-insecure-at8r1lwp8w*k=49ekdr*2+r1u^169%!cxeo&4)0zfyw$s94tb2"
+)
 IPSTACK_API_KEY = "2925ee8a4ef280a390c6e7d712ed2a57"
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -79,7 +81,9 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {"default": dj_database_url.config(default=os.getenv("DATABASE_URL"))}
+DATABASES = {
+    "default": dj_database_url.config(default=os.getenv("DATABASE_URL"))
+}
 
 
 # Password validation

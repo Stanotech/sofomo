@@ -8,12 +8,12 @@ from geolocation.models import Geolocation
 
 
 @pytest.fixture
-def api_client():
+def api_client() -> APIClient:
     return APIClient()
 
 
 @pytest.mark.django_db
-def test_integration_get_geolocation_by_ip(api_client):
+def test_integration_get_geolocation_by_ip(api_client: APIClient) -> None:
     # creating test data
     Geolocation.objects.create(
         ip_address="192.168.1.1",
@@ -32,7 +32,9 @@ def test_integration_get_geolocation_by_ip(api_client):
 
 
 @pytest.mark.django_db
-def test_integration_post_geolocation(api_client, requests_mock):
+def test_integration_post_geolocation(
+    api_client: APIClient, requests_mock: any
+) -> None:
     # Mocking response from IPStack API
     requests_mock.get(
         f"http://api.ipstack.com/192.168.1.1?access_key={settings.IPSTACK_API_KEY}",
@@ -53,7 +55,7 @@ def test_integration_post_geolocation(api_client, requests_mock):
 
 
 @pytest.mark.django_db
-def test_integration_delete_geolocation(api_client):
+def test_integration_delete_geolocation(api_client: APIClient) -> None:
     # creating test data
     Geolocation.objects.create(
         ip_address="192.168.1.1",

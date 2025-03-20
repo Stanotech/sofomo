@@ -1,0 +1,10 @@
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "ANN", "PLW"]  # Dodaj ANN i PLW do sprawdzania typów
+extend-ignore = ["E501"]
+ignore = ["ANN101", "ANN102"]  # Możesz pominąć adnotacje dla self i cls w metodach
+
+[tool.black]
+line-length = 79

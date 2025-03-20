@@ -15,13 +15,15 @@ from .serializers import GeolocationSerializer
 from .utils import is_valid_ip
 
 
-def handle_db_error(func):
+def handle_db_error(func: callable) -> callable:
     """
     Dekorator for handle database errors.
     """
 
     @wraps(func)
-    def wrapper(self, request, *args, **kwargs):
+    def wrapper(
+        self: "GeolocationView", request: Request, *args: tuple, **kwargs: dict
+    ) -> Response:
         try:
             return func(self, request, *args, **kwargs)
         except OperationalError:
@@ -63,7 +65,10 @@ class GeolocationView(APIView):
         Retrieve and store geolocation data for the given IP or URL.
         """
 
-        if not hasattr(settings, "IPSTACK_API_KEY") or not settings.IPSTACK_API_KEY:
+        if (
+            not hasattr(settings, "IPSTACK_API_KEY")
+            or not settings.IPSTACK_API_KEY
+        ):
             return Response(
                 {"error": "Missing IPStack API key in settings."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -100,7 +105,9 @@ class GeolocationView(APIView):
             return Response(
                 {
                     "error": "IPStack API returned an error",
-                    "details": data.get("error", {}).get("info", "Unknown error"),
+                    "details": data.get("error", {}).get(
+                        "info", "Unknown error"
+                    ),
                 },
                 status=status.HTTP_502_BAD_GATEWAY,
             )
@@ -157,10 +164,12 @@ class GeolocationView(APIView):
         Helper function to extract and validate IP or URL from the request.
         """
 
-        ip: Optional[str] = request.query_params.get("ip") or request.data.get("ip")
-        url: Optional[str] = request.query_params.get("url") or request.data.get(
-            "url"
+        ip: Optional[str] = request.query_params.get("ip") or request.data.get(
+            "ip"
         )
+        url: Optional[str] = request.query_params.get(
+            "url"
+        ) or request.data.get("url")
 
         if not ip and not url:
             return (
