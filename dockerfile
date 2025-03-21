@@ -14,10 +14,10 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt
 COPY . .
 RUN chown -R appuser:appgroup /app
 
-USER appuser
-
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod +x /entrypoint.sh  # Teraz jesteśmy rootem i możemy zmienić uprawnienia
+
+USER appuser  # Dopiero teraz przełączamy się na appuser
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
