@@ -150,9 +150,7 @@ class GeolocationView(APIView):
             return Response(
                 {"error": "Data not found."}, status=status.HTTP_404_NOT_FOUND
             )
-        return Response(
-            {"message": "Data deleted."}, status=status.HTTP_204_NO_CONTENT
-        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def _get_ip_or_url(
         self, request: Request
