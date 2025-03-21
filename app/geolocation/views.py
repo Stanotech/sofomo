@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Optional
+from typing import Optional, Tuple
 
 import requests
 from django.conf import settings
@@ -12,7 +12,7 @@ from rest_framework.views import APIView
 
 from .models import Geolocation
 from .serializers import GeolocationSerializer
-from .utils import is_valid_ip
+from .utils import is_valid_ip, is_valid_url
 
 
 def handle_db_error(func: callable) -> callable:
@@ -124,8 +124,8 @@ class GeolocationView(APIView):
             )
 
         geolocation = Geolocation.objects.create(
-            ip_address=ip if ip else None,
-            url=url if url else None,
+            ip_address=ip or None,
+            url=url or None,
             country=data.get("country_name", ""),
             region=data.get("region_name", ""),
             city=data.get("city", ""),
@@ -152,20 +152,14 @@ class GeolocationView(APIView):
             )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def _get_ip_or_url(
-        self, request: Request
-    ) -> tuple[Optional[str], Optional[str], Optional[Response]]:
+    def _get_ip_or_url(self, request: Request) -> Tuple[Optional[str], Optional[str], Optional[Response]]:
         """
         Helper function to extract and validate IP or URL from the request.
         """
-
-        ip: Optional[str] = request.query_params.get("ip") or request.data.get(
-            "ip"
-        )
-        url: Optional[str] = request.query_params.get(
-            "url"
-        ) or request.data.get("url")
-
+    
+        ip: Optional[str] = request.query_params.get("ip") or request.data.get("ip")
+        url: Optional[str] = request.query_params.get("url") or request.data.get("url")
+    
         if not ip and not url:
             return (
                 None,
@@ -175,28 +169,53 @@ class GeolocationView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 ),
             )
-
-        if ip and not is_valid_ip(ip):
+    
+        if ip and url:
             return (
                 None,
                 None,
                 Response(
-                    {"error": "Invalid IP address format."},
+                    {"error": "Provide either an IP or a URL, not both."},
                     status=status.HTTP_400_BAD_REQUEST,
                 ),
             )
-
-        return ip, url, None
-
+    
+        if ip:
+            if not is_valid_ip(ip):
+                return (
+                    None,
+                    None,
+                    Response(
+                        {"error": "Invalid IP address format."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    ),
+                )
+            return ip, None, None
+    
+        if url:
+            if not is_valid_url(url):
+                return (
+                    None,
+                    None,
+                    Response(
+                        {"error": "Invalid URL format."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    ),
+                )
+            return None, url, None
+        
+        return None, None, Response(
+            {"error": "Unexpected error."}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    
     def _get_geolocations(self, ip: str | None, url: str | None) -> QuerySet:
         """
         Helper function to filter geolocation records by IP or URL.
         If both IP and URL are provided, returns records matching either condition.
         """
 
-        if ip and url:
-            return Geolocation.objects.filter(Q(ip_address=ip) | Q(url=url))
-        elif ip:
+        if ip:
             return Geolocation.objects.filter(ip_address=ip)
         elif url:
             return Geolocation.objects.filter(url=url)
