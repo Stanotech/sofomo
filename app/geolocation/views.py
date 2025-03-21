@@ -157,57 +157,19 @@ class GeolocationView(APIView):
         Helper function to extract and validate IP or URL from the request.
         """
     
-        ip: Optional[str] = request.query_params.get("ip") or request.data.get("ip")
-        url: Optional[str] = request.query_params.get("url") or request.data.get("url")
+        ip = request.query_params.get("ip") or request.data.get("ip")
+        url = request.query_params.get("url") or request.data.get("url")
     
         if not ip and not url:
-            return (
-                None,
-                None,
-                Response(
-                    {"error": "Please provide an IP or URL."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                ),
-            )
+            error_msg = "Please provide an IP or URL."
+        elif ip and url:
+            error_msg = "Provide either an IP or a URL, not both."
+        elif ip and not is_valid_ip(ip):
+            error_msg = "Invalid IP address format."
+        elif url and not is_valid_url(url):
+            error_msg = "Invalid URL format."
     
-        if ip and url:
-            return (
-                None,
-                None,
-                Response(
-                    {"error": "Provide either an IP or a URL, not both."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                ),
-            )
-    
-        if ip:
-            if not is_valid_ip(ip):
-                return (
-                    None,
-                    None,
-                    Response(
-                        {"error": "Invalid IP address format."},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    ),
-                )
-            return ip, None, None
-    
-        if url:
-            if not is_valid_url(url):
-                return (
-                    None,
-                    None,
-                    Response(
-                        {"error": "Invalid URL format."},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    ),
-                )
-            return None, url, None
-        
-        return None, None, Response(
-            {"error": "Unexpected error."}, 
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return None, None, Response({"error": error_msg}, status=status.HTTP_400_BAD_REQUEST)
     
     def _get_geolocations(self, ip: str | None, url: str | None) -> QuerySet:
         """
