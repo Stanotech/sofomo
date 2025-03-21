@@ -3,7 +3,7 @@ from typing import Optional
 
 import requests
 from django.conf import settings
-from django.db import OperationalError
+from django.db import OperationalError, DatabaseError
 from django.db.models import QuerySet
 from rest_framework import status
 from rest_framework.request import Request
@@ -22,13 +22,13 @@ def handle_db_error(func: callable) -> callable:
 
     @wraps(func)
     def wrapper(
-        self: "GeolocationView", request: Request, *args: tuple, **kwargs: dict
-    ) -> Response:
+            self: "GeolocationView", request: Request, *args: tuple, **kwargs: dict
+        ) -> Response:
         try:
             return func(self, request, *args, **kwargs)
-        except OperationalError:
+        except (OperationalError, DatabaseError) as e:
             return Response(
-                {"error": "Database is not available."},
+                {"error": f"{str(e)}"},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
