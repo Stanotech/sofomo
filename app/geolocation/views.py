@@ -65,10 +65,7 @@ class GeolocationView(APIView):
         Retrieve and store geolocation data for the given IP or URL.
         """
 
-        if (
-            not hasattr(settings, "IPSTACK_API_KEY")
-            or not settings.IPSTACK_API_KEY
-        ):
+        if not settings.IPSTACK_API_KEY:
             return Response(
                 {"error": "Missing IPStack API key in settings."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -196,10 +193,14 @@ class GeolocationView(APIView):
     def _get_geolocations(self, ip: str | None, url: str | None) -> QuerySet:
         """
         Helper function to filter geolocation records by IP or URL.
+        If both IP and URL are provided, returns records matching either condition.
         """
 
-        if ip:
+        if ip and url:
+            return Geolocation.objects.filter(Q(ip_address=ip) | Q(url=url))
+        elif ip:
             return Geolocation.objects.filter(ip_address=ip)
         elif url:
             return Geolocation.objects.filter(url=url)
-        return Geolocation.objects.none()
+        else:
+
