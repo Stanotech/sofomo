@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Optional
+from typing import Optional, Tuple
 
 import requests
 from django.conf import settings
@@ -12,7 +12,7 @@ from rest_framework.views import APIView
 
 from .models import Geolocation
 from .serializers import GeolocationSerializer
-from .utils import is_valid_ip
+from .utils import is_valid_ip, is_valid_url
 
 
 def handle_db_error(func: callable) -> callable:
@@ -21,9 +21,7 @@ def handle_db_error(func: callable) -> callable:
     """
 
     @wraps(func)
-    def wrapper(
-            self: "GeolocationView", request: Request, *args: tuple, **kwargs: dict
-        ) -> Response:
+    def wrapper(self: "GeolocationView", request: Request, *args: tuple, **kwargs: dict) -> Response:
         try:
             return func(self, request, *args, **kwargs)
         except (OperationalError, DatabaseError) as e:
@@ -64,7 +62,7 @@ class GeolocationView(APIView):
         """
         Retrieve and store geolocation data for the given IP or URL.
         """
-
+        
         if not settings.IPSTACK_API_KEY:
             return Response(
                 {"error": "Missing IPStack API key in settings."},
@@ -72,65 +70,21 @@ class GeolocationView(APIView):
             )
 
         ip, url, error_response = self._get_ip_or_url(request)
-
         if error_response:
             return error_response
 
-        ipstack_url = f"https://api.ipstack.com/{ip or url}?access_key={settings.IPSTACK_API_KEY}"
-        response = requests.get(ipstack_url)
-
-        if response.status_code != 200:
-            return Response(
-                {
-                    "error": "IPStack API error",
-                    "status_code": response.status_code,
-                    "details": response.text,
-                },
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-
-        try:
-            data = response.json()
-
-        except ValueError:
-            return Response(
-                {"error": "Invalid JSON response from IPStack API"},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-
-        if not data.get("success", True):
-            return Response(
-                {
-                    "error": "IPStack API returned an error",
-                    "details": data.get("error", {}).get(
-                        "info", "Unknown error"
-                    ),
-                },
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-
-        required_keys = [
-            "country_name",
-            "region_name",
-            "city",
-            "latitude",
-            "longitude",
-        ]
-
-        if not all(key in data for key in required_keys):
-            return Response(
-                {"error": "Invalid data from IPStack API"},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+        geolocation_data = self._get_geolocation_data_from_ipstack(ip, url)
+        if isinstance(geolocation_data, Response):
+            return geolocation_data 
 
         geolocation = Geolocation.objects.create(
-            ip_address=ip if ip else None,
-            url=url if url else None,
-            country=data.get("country_name", ""),
-            region=data.get("region_name", ""),
-            city=data.get("city", ""),
-            latitude=data.get("latitude", 0),
-            longitude=data.get("longitude", 0),
+            ip_address=ip or None,
+            url=url or None,
+            country=geolocation_data.get("country_name", ""),
+            region=geolocation_data.get("region_name", ""),
+            city=geolocation_data.get("city", ""),
+            latitude=geolocation_data.get("latitude", 0),
+            longitude=geolocation_data.get("longitude", 0),
         )
         serializer = GeolocationSerializer(geolocation)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -152,51 +106,85 @@ class GeolocationView(APIView):
             )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def _get_ip_or_url(
-        self, request: Request
-    ) -> tuple[Optional[str], Optional[str], Optional[Response]]:
+    def _get_ip_or_url(self, request: Request) -> Tuple[Optional[str], Optional[str], Optional[Response]]:
         """
         Helper function to extract and validate IP or URL from the request.
         """
-
-        ip: Optional[str] = request.query_params.get("ip") or request.data.get(
-            "ip"
-        )
-        url: Optional[str] = request.query_params.get(
-            "url"
-        ) or request.data.get("url")
-
+    
+        ip = request.query_params.get("ip") or request.data.get("ip")
+        url = request.query_params.get("url") or request.data.get("url")
+    
         if not ip and not url:
-            return (
-                None,
-                None,
-                Response(
-                    {"error": "Please provide an IP or URL."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                ),
-            )
-
-        if ip and not is_valid_ip(ip):
-            return (
-                None,
-                None,
-                Response(
-                    {"error": "Invalid IP address format."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                ),
-            )
-
-        return ip, url, None
-
+            error_msg = "Please provide an IP or URL."
+        elif ip and url:
+            error_msg = "Provide either an IP or a URL, not both."
+        elif ip and not is_valid_ip(ip):
+            error_msg = "Invalid IP address format."
+        elif url and not is_valid_url(url):
+            error_msg = "Invalid URL format."
+        else:
+            return ip, url, None
+    
+        return None, None, Response({"error": error_msg}, status=status.HTTP_400_BAD_REQUEST)
+    
     def _get_geolocations(self, ip: str | None, url: str | None) -> QuerySet:
         """
         Helper function to filter geolocation records by IP or URL.
-        If both IP and URL are provided, returns records matching either condition.
+        Only one parameter (either IP or URL) is processed, 
+        as the helper _get_ip_or_url ensures that both are not provided at the same time.
         """
 
-        if ip and url:
-            return Geolocation.objects.filter(Q(ip_address=ip) | Q(url=url))
-        elif ip:
+        if ip:
             return Geolocation.objects.filter(ip_address=ip)
         elif url:
             return Geolocation.objects.filter(url=url)
+        
+    def _get_geolocation_data_from_ipstack(self, ip: str | None, url: str | None) -> dict | Response:
+        """
+        Helper function to retrieve geolocation data from the IPStack API.
+        """
+        ipstack_url = f"https://api.ipstack.com/{ip or url}?access_key={settings.IPSTACK_API_KEY}"
+        response = requests.get(ipstack_url, timeout=5)
+
+        if response.status_code != 200:
+            return Response(
+                {
+                    "error": "IPStack API error",
+                    "status_code": response.status_code,
+                    "details": response.text,
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        try:
+            data = response.json()
+        except ValueError:
+            return Response(
+                {"error": "Invalid JSON response from IPStack API"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        if not data.get("success", True):
+            return Response(
+                {
+                    "error": "IPStack API returned an error",
+                    "details": data.get("error", {}).get("info", "Unknown error")
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        required_keys = [
+            "country_name",
+            "region_name",
+            "city",
+            "latitude",
+            "longitude",
+        ]
+
+        if not all(key in data for key in required_keys):
+            return Response(
+                {"error": "Invalid data from IPStack API"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return data
