@@ -17,8 +17,8 @@ Requirements
 Installation
 
 
-    git clone https://github.com/yourusername/geolocation-api.git
-    cd geolocation-api
+    git clone https://github.com/Stanotech/sofomo.git
+    
 
 Create a .env file in the root directory and fill it with the following data:
 
