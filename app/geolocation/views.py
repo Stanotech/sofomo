@@ -202,5 +202,3 @@ class GeolocationView(APIView):
             return Geolocation.objects.filter(ip_address=ip)
         elif url:
             return Geolocation.objects.filter(url=url)
-        else:
-
