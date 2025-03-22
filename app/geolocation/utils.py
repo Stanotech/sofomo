@@ -8,10 +8,10 @@ def is_valid_ip(ip: str) -> bool:
         return True
     except ValueError:
         return False
-    
+
 def is_valid_url(url: str) -> bool:
     try:
-        result = urlparse(url)
+        urlparse(url)
         return True
     except ValueError:
         return False
