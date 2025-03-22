@@ -174,7 +174,8 @@ class GeolocationView(APIView):
     def _get_geolocations(self, ip: str | None, url: str | None) -> QuerySet:
         """
         Helper function to filter geolocation records by IP or URL.
-        If both IP and URL are provided, returns records matching either condition.
+        Only one parameter (either IP or URL) is processed, 
+        as the helper _get_ip_or_url ensures that both are not provided at the same time.
         """
 
         if ip:
