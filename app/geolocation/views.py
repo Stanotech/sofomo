@@ -62,7 +62,6 @@ class GeolocationView(APIView):
         """
         Retrieve and store geolocation data for the given IP or URL.
         """
-
         if not settings.IPSTACK_API_KEY:
             return Response(
                 {"error": "Missing IPStack API key in settings."},
@@ -70,65 +69,23 @@ class GeolocationView(APIView):
             )
 
         ip, url, error_response = self._get_ip_or_url(request)
-
         if error_response:
             return error_response
 
-        ipstack_url = f"https://api.ipstack.com/{ip or url}?access_key={settings.IPSTACK_API_KEY}"
-        response = requests.get(ipstack_url, timeout=5)
+        # Get geolocation data from IPStack API
+        geolocation_data = self._get_geolocation_data_from_ipstack(ip, url)
+        if isinstance(geolocation_data, Response):
+            return geolocation_data  # Return error response if it’s an error
 
-        if response.status_code != 200:
-            return Response(
-                {
-                    "error": "IPStack API error",
-                    "status_code": response.status_code,
-                    "details": response.text,
-                },
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-
-        try:
-            data = response.json()
-
-        except ValueError:
-            return Response(
-                {"error": "Invalid JSON response from IPStack API"},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-
-        if not data.get("success", True):
-            return Response(
-                {
-                    "error": "IPStack API returned an error",
-                    "details": data.get("error", {}).get(
-                        "info", "Unknown error"
-                    ),
-                },
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-
-        required_keys = [
-            "country_name",
-            "region_name",
-            "city",
-            "latitude",
-            "longitude",
-        ]
-
-        if not all(key in data for key in required_keys):
-            return Response(
-                {"error": "Invalid data from IPStack API"},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-
+        # Create a new Geolocation object
         geolocation = Geolocation.objects.create(
             ip_address=ip or None,
             url=url or None,
-            country=data.get("country_name", ""),
-            region=data.get("region_name", ""),
-            city=data.get("city", ""),
-            latitude=data.get("latitude", 0),
-            longitude=data.get("longitude", 0),
+            country=geolocation_data.get("country_name", ""),
+            region=geolocation_data.get("region_name", ""),
+            city=geolocation_data.get("city", ""),
+            latitude=geolocation_data.get("latitude", 0),
+            longitude=geolocation_data.get("longitude", 0),
         )
         serializer = GeolocationSerializer(geolocation)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -182,3 +139,53 @@ class GeolocationView(APIView):
             return Geolocation.objects.filter(ip_address=ip)
         elif url:
             return Geolocation.objects.filter(url=url)
+        
+    def _get_geolocation_data_from_ipstack(self, ip: str | None, url: str | None) -> dict | Response:
+        """
+        Helper function to retrieve geolocation data from the IPStack API.
+        """
+        ipstack_url = f"https://api.ipstack.com/{ip or url}?access_key={settings.IPSTACK_API_KEY}"
+        response = requests.get(ipstack_url, timeout=5)
+
+        if response.status_code != 200:
+            return Response(
+                {
+                    "error": "IPStack API error",
+                    "status_code": response.status_code,
+                    "details": response.text,
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        try:
+            data = response.json()
+        except ValueError:
+            return Response(
+                {"error": "Invalid JSON response from IPStack API"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        if not data.get("success", True):
+            return Response(
+                {
+                    "error": "IPStack API returned an error",
+                    "details": data.get("error", {}).get("info", "Unknown error")
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        required_keys = [
+            "country_name",
+            "region_name",
+            "city",
+            "latitude",
+            "longitude",
+        ]
+
+        if not all(key in data for key in required_keys):
+            return Response(
+                {"error": "Invalid data from IPStack API"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return data
