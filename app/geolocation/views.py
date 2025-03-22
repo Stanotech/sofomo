@@ -62,6 +62,7 @@ class GeolocationView(APIView):
         """
         Retrieve and store geolocation data for the given IP or URL.
         """
+        
         if not settings.IPSTACK_API_KEY:
             return Response(
                 {"error": "Missing IPStack API key in settings."},
@@ -72,12 +73,10 @@ class GeolocationView(APIView):
         if error_response:
             return error_response
 
-        # Get geolocation data from IPStack API
         geolocation_data = self._get_geolocation_data_from_ipstack(ip, url)
         if isinstance(geolocation_data, Response):
-            return geolocation_data  # Return error response if it’s an error
+            return geolocation_data 
 
-        # Create a new Geolocation object
         geolocation = Geolocation.objects.create(
             ip_address=ip or None,
             url=url or None,
