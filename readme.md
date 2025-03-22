@@ -18,13 +18,15 @@ Requirements
 Installation
 
     git clone https://github.com/Stanotech/sofomo.git
-
+    cd sofomo
     docker-compose up
 
 The application will be available at http://localhost:8000.
+
     
 .env file is included to simplify installation proces for recruiter
 
+<br>
 
 API Usage
 Retrieving Geolocation Data (GET)
