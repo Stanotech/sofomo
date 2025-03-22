@@ -1,4 +1,5 @@
 Geolocation API
+The recruitment task specification can be found in the file recruitment task.txt
 
 Geolocation API is a Django REST Framework (DRF) application that allows you to retrieve, add, and delete geolocation data based on an IP address or URL. The application uses an external API (IPStack) to fetch geolocation data.
 Features
@@ -16,23 +17,13 @@ Requirements
 
 Installation
 
-
     git clone https://github.com/Stanotech/sofomo.git
-    
 
-Create a .env file in the root directory and fill it with the following data:
-
-    POSTGRES_DB=geolocation_db
-    POSTGRES_USER=user
-    POSTGRES_PASSWORD=password
-    DATABASE_URL=postgres://user:password@db:5432/geolocation_db
-    IPSTACK_API_KEY=your_ipstack_api_key
-
-bash:
-
-    docker-compose up --build
+    docker-compose up
 
 The application will be available at http://localhost:8000.
+    
+.env file is included to simplify installation proces for recruiter
 
 
 API Usage
