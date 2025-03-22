@@ -21,9 +21,7 @@ def handle_db_error(func: callable) -> callable:
     """
 
     @wraps(func)
-    def wrapper(
-            self: "GeolocationView", request: Request, *args: tuple, **kwargs: dict
-        ) -> Response:
+    def wrapper(self: "GeolocationView", request: Request, *args: tuple, **kwargs: dict) -> Response:
         try:
             return func(self, request, *args, **kwargs)
         except (OperationalError, DatabaseError) as e:
@@ -77,7 +75,7 @@ class GeolocationView(APIView):
             return error_response
 
         ipstack_url = f"https://api.ipstack.com/{ip or url}?access_key={settings.IPSTACK_API_KEY}"
-        response = requests.get(ipstack_url)
+        response = requests.get(ipstack_url, timeout=5)
 
         if response.status_code != 200:
             return Response(
@@ -168,6 +166,8 @@ class GeolocationView(APIView):
             error_msg = "Invalid IP address format."
         elif url and not is_valid_url(url):
             error_msg = "Invalid URL format."
+        else:
+            return ip, url, None
     
         return None, None, Response({"error": error_msg}, status=status.HTTP_400_BAD_REQUEST)
     
