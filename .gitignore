@@ -13,7 +13,6 @@ db.sqlite3
 .DS_Store
 *.bak
 *.~*
-.env
 *.pid
 
 # Django migrations (if you want to ignore them)
@@ -49,3 +48,4 @@ media/
 *.egg-info/
 dist/
 build/
+.qodo

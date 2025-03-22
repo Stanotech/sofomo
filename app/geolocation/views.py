@@ -3,7 +3,7 @@ from typing import Optional, Tuple
 
 import requests
 from django.conf import settings
-from django.db import OperationalError, DatabaseError
+from django.db import DatabaseError, OperationalError
 from django.db.models import QuerySet
 from rest_framework import status
 from rest_framework.request import Request
@@ -62,7 +62,7 @@ class GeolocationView(APIView):
         """
         Retrieve and store geolocation data for the given IP or URL.
         """
-        
+
         if not settings.IPSTACK_API_KEY:
             return Response(
                 {"error": "Missing IPStack API key in settings."},
@@ -75,7 +75,7 @@ class GeolocationView(APIView):
 
         geolocation_data = self._get_geolocation_data_from_ipstack(ip, url)
         if isinstance(geolocation_data, Response):
-            return geolocation_data 
+            return geolocation_data
 
         geolocation = Geolocation.objects.create(
             ip_address=ip or None,
@@ -110,10 +110,10 @@ class GeolocationView(APIView):
         """
         Helper function to extract and validate IP or URL from the request.
         """
-    
+
         ip = request.query_params.get("ip") or request.data.get("ip")
         url = request.query_params.get("url") or request.data.get("url")
-    
+
         if not ip and not url:
             error_msg = "Please provide an IP or URL."
         elif ip and url:
@@ -124,13 +124,13 @@ class GeolocationView(APIView):
             error_msg = "Invalid URL format."
         else:
             return ip, url, None
-    
+
         return None, None, Response({"error": error_msg}, status=status.HTTP_400_BAD_REQUEST)
-    
+
     def _get_geolocations(self, ip: str | None, url: str | None) -> QuerySet:
         """
         Helper function to filter geolocation records by IP or URL.
-        Only one parameter (either IP or URL) is processed, 
+        Only one parameter (either IP or URL) is processed,
         as the helper _get_ip_or_url ensures that both are not provided at the same time.
         """
 
@@ -138,7 +138,7 @@ class GeolocationView(APIView):
             return Geolocation.objects.filter(ip_address=ip)
         elif url:
             return Geolocation.objects.filter(url=url)
-        
+
     def _get_geolocation_data_from_ipstack(self, ip: str | None, url: str | None) -> dict | Response:
         """
         Helper function to retrieve geolocation data from the IPStack API.
