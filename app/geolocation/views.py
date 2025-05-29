@@ -11,8 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Geolocation
-from .serializers import GeolocationSerializer
-from .utils import is_valid_ip, is_valid_url
+from .serializers import GeolocationInputSerializer, GeolocationSerializer
 
 
 def handle_db_error(func: callable) -> callable:
@@ -26,7 +25,7 @@ def handle_db_error(func: callable) -> callable:
             return func(self, request, *args, **kwargs)
         except (OperationalError, DatabaseError) as e:
             return Response(
-                {"error": f"{str(e)}"},
+                {"error": str(e)},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
@@ -35,7 +34,7 @@ def handle_db_error(func: callable) -> callable:
 
 class GeolocationView(APIView):
     """
-    API endpoint to retrieve and store geolocation data for IP addresses and URLs.
+    API endpoint to retrieve, store, and delete geolocation data for IP addresses and URLs.
     """
 
     @handle_db_error
@@ -43,18 +42,19 @@ class GeolocationView(APIView):
         """
         Retrieve geolocation data for a given IP or URL.
         """
+        # Walidacja wejścia
+        input_serializer = GeolocationInputSerializer(data=request.query_params)
+        input_serializer.is_valid(raise_exception=True)
+        ip = input_serializer.validated_data.get("ip")
+        url = input_serializer.validated_data.get("url")
 
-        ip, url, error_response = self._get_ip_or_url(request)
-        if error_response:
-            return error_response
-
-        geolocations = self._get_geolocations(ip, url)
-        if not geolocations:
+        qs = self._get_geolocations(ip, url)
+        if not qs.exists():
             return Response(
                 {"error": "No data found for this IP or URL."},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        serializer = GeolocationSerializer(geolocations, many=True)
+        serializer = GeolocationSerializer(qs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @handle_db_error
@@ -69,9 +69,10 @@ class GeolocationView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        ip, url, error_response = self._get_ip_or_url(request)
-        if error_response:
-            return error_response
+        input_serializer = GeolocationInputSerializer(data=request.data)
+        input_serializer.is_valid(raise_exception=True)
+        ip = input_serializer.validated_data.get("ip")
+        url = input_serializer.validated_data.get("url")
 
         geolocation_data = self._get_geolocation_data_from_ipstack(ip, url)
         if isinstance(geolocation_data, Response):
@@ -94,40 +95,21 @@ class GeolocationView(APIView):
         """
         Delete geolocation data for a given IP or URL.
         """
+        # Walidacja wejścia
+        input_serializer = GeolocationInputSerializer(data=request.query_params)
+        input_serializer.is_valid(raise_exception=True)
+        ip = input_serializer.validated_data.get("ip")
+        url = input_serializer.validated_data.get("url")
 
-        ip, url, error_response = self._get_ip_or_url(request)
-        if error_response:
-            return error_response
-
-        deleted, _ = self._get_geolocations(ip, url).delete()
-        if deleted == 0:
+        deleted_count, _ = self._get_geolocations(ip, url).delete()
+        if deleted_count == 0:
             return Response(
-                {"error": "Data not found."}, status=status.HTTP_404_NOT_FOUND
+                {"error": "Data not found."},
+                status=status.HTTP_404_NOT_FOUND,
             )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def _get_ip_or_url(self, request: Request) -> Tuple[Optional[str], Optional[str], Optional[Response]]:
-        """
-        Helper function to extract and validate IP or URL from the request.
-        """
-
-        ip = request.query_params.get("ip") or request.data.get("ip")
-        url = request.query_params.get("url") or request.data.get("url")
-
-        if not ip and not url:
-            error_msg = "Please provide an IP or URL."
-        elif ip and url:
-            error_msg = "Provide either an IP or a URL, not both."
-        elif ip and not is_valid_ip(ip):
-            error_msg = "Invalid IP address format."
-        elif url and not is_valid_url(url):
-            error_msg = "Invalid URL format."
-        else:
-            return ip, url, None
-
-        return None, None, Response({"error": error_msg}, status=status.HTTP_400_BAD_REQUEST)
-
-    def _get_geolocations(self, ip: str | None, url: str | None) -> QuerySet:
+    def _get_geolocations(self, ip: Optional[str], url: Optional[str]) -> QuerySet:
         """
         Helper function to filter geolocation records by IP or URL.
         Only one parameter (either IP or URL) is processed,
@@ -136,10 +118,11 @@ class GeolocationView(APIView):
 
         if ip:
             return Geolocation.objects.filter(ip_address=ip)
-        elif url:
-            return Geolocation.objects.filter(url=url)
+        return Geolocation.objects.filter(url=url)
 
-    def _get_geolocation_data_from_ipstack(self, ip: str | None, url: str | None) -> dict | Response:
+    def _get_geolocation_data_from_ipstack(
+        self, ip: Optional[str], url: Optional[str]
+    ) -> dict | Response:
         """
         Helper function to retrieve geolocation data from the IPStack API.
         """
@@ -168,7 +151,7 @@ class GeolocationView(APIView):
             return Response(
                 {
                     "error": "IPStack API returned an error",
-                    "details": data.get("error", {}).get("info", "Unknown error")
+                    "details": data.get("error", {}).get("info", "Unknown error"),
                 },
                 status=status.HTTP_502_BAD_GATEWAY,
             )
