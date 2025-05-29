@@ -143,7 +143,7 @@ def test_get_geolocation_invalid_ip(request_factory: RequestFactory) -> None:
     response = view(request)
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert response.data["error"] == "Invalid IP address format."
+    assert response.data["ip"][0] == "Invalid IP address format."
 
 
 @pytest.mark.django_db
